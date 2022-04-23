@@ -1,4 +1,3 @@
-import { ethToEvmos } from "@tharsis/address-converter"
 import { generateEndpointAccount } from "@tharsis/provider"
 import fetch from "node-fetch"
 
