@@ -8,6 +8,19 @@
  * TODO Setup local evm node (geth?)
  */
 
+/**
+ * ethJsonRpc: http 8545 --> 8545
+ * 
+ * -----
+ * evmosGRpc: http 9090 --> 9092
+ * evmosRpc: tcp 26657 --> 26659
+ * evmosJsonRpc: http 8545 --> 8847
+ * -----
+ * cosmosGRpc: http 9090 --> 9094
+ * cosmosRpc: tcp 26657 --> 26661
+ * cosmosRest: http 1317 --> 1321
+ */
+
 import Web3 from "web3"
 import { ethToEvmos, evmosToEth } from "@tharsis/address-converter"
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate"
@@ -15,13 +28,13 @@ import { QueryClient, setupBankExtension,  } from "@cosmjs/stargate"
 import { Tendermint34Client } from "@cosmjs/tendermint-rpc"
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing"
 
-const josnRpcUrl = "http://localhost:8545"
-const web3 = new Web3(josnRpcUrl)
 
 /* CLIENTS */
 // ETH
+const evmosJsonRpcUrl = "http://localhost:8545"
+const web3 = new Web3(evmosJsonRpcUrl)
 // EVMOS
-const evmosRpcUrl = "tcp://0.0.0.0:26657"
+const evmosRpcUrl = "tcp://0.0.0.0:26660"
 const evmosTmClient = await Tendermint34Client.connect(evmosRpcUrl)
 const evmosQueryClient = QueryClient.withExtensions(evmosTmClient, setupBankExtension)
 // COSMOS
