@@ -1,10 +1,10 @@
 /**
  * // Setup metamask wallet with some fake tokens
  * // Attach to web3.js
- * TODO Bring assets from eth to evmos
- * TODO Bring assets from evmos to wasm
- * TODO Setup eth signer (alchemy web3?)
- * TODO setup cosmos signer with cosmjs
+ * TODO Bring assets from eth to evmos (hmmmm)
+ * TODO Bring assets from evmos to wasm (IBC transfer prob)
+ * // Setup eth signer (alchemy web3? --> metamask signer)
+ * //  setup cosmos signer with cosmjs
  * TODO Setup local evm node (geth?)
  */
 
@@ -23,7 +23,7 @@ import { Tendermint34Client } from "@cosmjs/tendermint-rpc"
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing"
 
 import { signTypedData, SignTypedDataVersion } from "@metamask/eth-sig-util"
-=
+
 /* CLIENTS */
 // ETH
 const evmosJsonRpcUrl = "http://0.0.0.0:8545"
@@ -47,14 +47,6 @@ const ethTestPrivKey = "a1bf8edafe42bcac098d411e91d2e455a6f60a1217a5db27cf91de46
 const ethTestWallet = web3.eth.accounts.wallet.add(ethTestPrivKey)
 // EVMOS
 const evmosTestAddress = ethToEvmos(ethTestAddress)
-const options = {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-}
-await (await fetch(`${evmosHttpUrl}${generateEndpointAccount(evmosTestAddress)}`, options)).json()
-.then((account => {
-    console.log(account.account.base_account)
-}))
 // WASM
 const wasmTestWallet = await DirectSecp256k1HdWallet.fromMnemonic(testMnemonic, { hdPaths: [pebblenetOptions.hdPath], prefix: pebblenetOptions.bech32prefix })
 const [wasmTestAccount] = await wasmTestWallet.getAccounts()
@@ -73,9 +65,11 @@ const evmosMainAddress = ethToEvmos(ethMainAddress)
 console.log(`ethTestAddress: ${ethTestAddress}`)
 console.log(`evmosTestAddress: ${evmosTestAddress}`)
 console.log(`wasmTestAddress: ${wasmTestAddress}`)
-console.log(await evmosQueryClient.bank.allBalances(evmosTestAddress))
-console.log(await evmosQueryClient.bank.allBalances(evmosMainAddress))
-console.log(await wasmQueryClient.bank.allBalances(wasmTestAddress))
+console.log("evmosTestBank: " + JSON.stringify(await evmosQueryClient.bank.allBalances(evmosTestAddress)))
+console.log("evmosMainBank: " + JSON.stringify(await evmosQueryClient.bank.allBalances(evmosMainAddress)))
+console.log("wasmMainBank: " + JSON.stringify(await wasmQueryClient.bank.allBalances(wasmTestAddress)))
+console.log("ethTestBank: " + await web3.eth.getBalance(ethTestAddress))
+console.log("ethMainBank: " + await web3.eth.getBalance(ethMainAddress))
 console.log(`Transaction Count - Test Account: ${await web3.eth.getTransactionCount(ethTestAddress)}`)
 console.log(`Transaction Count - Main Account: ${await web3.eth.getTransactionCount(ethMainAddress)}`)
 
