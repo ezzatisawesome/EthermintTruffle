@@ -1,17 +1,19 @@
 /**
  * // Setup metamask wallet with some fake tokens
  * // Attach to web3.js
- * TODO Bring assets from eth to evmos (hmmmm)
+ * TODO Bring assets from eth to evmos (IBC ??????)
  * TODO Bring assets from evmos to wasm (IBC transfer prob)
  * // Setup eth signer (alchemy web3? --> metamask signer)
  * //  setup cosmos signer with cosmjs
  * TODO Setup local evm node (geth?)
  */
 
-import { pebblenetOptions } from "./walletHelper.js"
+import { cliffnetOptions } from "./walletHelper.js"
 
 import Web3 from "web3"
 import fetch from "node-fetch"
+import DotenvConfigOptions  from "dotenv"
+DotenvConfigOptions.config({ path: './app.env'})
 
 import { ethToEvmos, evmosToEth } from "@tharsis/address-converter"
 import { generateEndpointBroadcast, generatePostBodyBroadcast, generateEndpointAccount } from '@tharsis/provider'
@@ -24,17 +26,21 @@ import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing"
 
 import { signTypedData, SignTypedDataVersion } from "@metamask/eth-sig-util"
 
+console.log()
 /* CLIENTS */
 // ETH
-const evmosJsonRpcUrl = "http://0.0.0.0:8545"
-const web3 = new Web3(evmosJsonRpcUrl)
+const ethJsonRpcUrl = `https://goerli.infura.io/v3/${process.env.infurio_id}`
+const ethWeb3 = new Web3(ethJsonRpcUrl)
 // EVMOS
+const evmosJsonRpcUrl = "http://0.0.0.0:8545"
 const evmosHttpUrl = "http://0.0.0.0:1317"
 const evmosRpcUrl = "tcp://0.0.0.0:26657"
+const evmosWeb3 = new Web3(evmosJsonRpcUrl)
 const evmosTmClient = await Tendermint34Client.connect(evmosRpcUrl)
 const evmosQueryClient = QueryClient.withExtensions(evmosTmClient, setupBankExtension)
 // WASM
-const wasmRpcUrl = pebblenetOptions.httpUrl
+const wasmHttpUrl = cliffnetOptions.lcdUrl // // haven't spun up yet
+const wasmRpcUrl = cliffnetOptions.httpUrl
 const wasmTmClient = await Tendermint34Client.connect(wasmRpcUrl)
 const wasmQueryClient = QueryClient.withExtensions(wasmTmClient, setupBankExtension)
 
@@ -42,16 +48,14 @@ const wasmQueryClient = QueryClient.withExtensions(wasmTmClient, setupBankExtens
 /* TEST WALLETS + ACCOUNTS */
 const testMnemonic = "hand flavor weasel connect valley debris like useful exile machine faculty join eager catch hospital banner bus enjoy course print kitten poverty inner section" // ! will need to be stored in some db
 // ETH
-const ethTestAddress = "0xAf61b4b63B8B8406bC0C8186299b46ea166a44E0"
-const ethTestPrivKey = "a1bf8edafe42bcac098d411e91d2e455a6f60a1217a5db27cf91de46b925b118"
-const ethTestWallet = web3.eth.accounts.wallet.add(ethTestPrivKey)
+const ethTestAddress = "0x8c1Fc905C8623a8f136f8C0a5b940f9FD98F472c"
+const ethTestPrivKey = "725AD2FD3F644B31EA3C4F1B307DB8F92101269DBE9006FA38F0BA4C7BE8B5F4"
 // EVMOS
 const evmosTestAddress = ethToEvmos(ethTestAddress)
 // WASM
-const wasmTestWallet = await DirectSecp256k1HdWallet.fromMnemonic(testMnemonic, { hdPaths: [pebblenetOptions.hdPath], prefix: pebblenetOptions.bech32prefix })
+const wasmTestWallet = await DirectSecp256k1HdWallet.fromMnemonic(testMnemonic, { hdPaths: [cliffnetOptions.hdPath], prefix: cliffnetOptions.bech32prefix })
 const [wasmTestAccount] = await wasmTestWallet.getAccounts()
 const wasmTestAddress = wasmTestAccount.address
-wasmTestAccount.pubkey
 const wasmClient = await SigningCosmWasmClient.connectWithSigner(wasmRpcUrl, wasmTestWallet);
 
 
@@ -68,10 +72,10 @@ console.log(`wasmTestAddress: ${wasmTestAddress}`)
 console.log("evmosTestBank: " + JSON.stringify(await evmosQueryClient.bank.allBalances(evmosTestAddress)))
 console.log("evmosMainBank: " + JSON.stringify(await evmosQueryClient.bank.allBalances(evmosMainAddress)))
 console.log("wasmMainBank: " + JSON.stringify(await wasmQueryClient.bank.allBalances(wasmTestAddress)))
-console.log("ethTestBank: " + await web3.eth.getBalance(ethTestAddress))
-console.log("ethMainBank: " + await web3.eth.getBalance(ethMainAddress))
-console.log(`Transaction Count - Test Account: ${await web3.eth.getTransactionCount(ethTestAddress)}`)
-console.log(`Transaction Count - Main Account: ${await web3.eth.getTransactionCount(ethMainAddress)}`)
+console.log("ethTestBank: " + await ethWeb3.eth.getBalance(ethTestAddress))
+console.log("ethMainBank: " + await ethWeb3.eth.getBalance(ethMainAddress))
+console.log(`Transaction Count - Test Account: ${await evmosWeb3.eth.getTransactionCount(ethTestAddress)}`)
+console.log(`Transaction Count - Main Account: ${await evmosWeb3.eth.getTransactionCount(ethMainAddress)}`)
 
 
 const evmosTransaction = async () => {
@@ -81,10 +85,10 @@ const chain = {
 }
 const sender = {
     accountAddress: evmosTestAddress,
-    sequence: 7,
+    sequence: 1,
     accountNumber: 0,
-    pubkey: 'A9qXeXtq2mElT9aGEeUX/eJWzgnP58wdV/70MiWS2/G8', // // get public key
-    privKey: Buffer.from('a1bf8edafe42bcac098d411e91d2e455a6f60a1217a5db27cf91de46b925b118', 'hex') // ! get priv key
+    pubkey: 'A1Do/MPAsMi/Sk6vvncVRAxGLAIpLCUpD2hgYIy7fiU6', // // get public key
+    privKey: Buffer.from(ethTestPrivKey, 'hex') // // get priv key
 }
 const fee = {
     amount: '20',

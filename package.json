@@ -4,6 +4,7 @@
     "@cosmjs/proto-signing": "^0.28.4",
     "@cosmjs/stargate": "^0.28.4",
     "@metamask/eth-sig-util": "^4.0.1",
+    "dotenv": "^16.0.0",
     "evmosjs": "^0.2.5",
     "node-fetch": "^3.2.3",
     "web3": "^1.7.3",
