@@ -26,7 +26,6 @@ import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing"
 
 import { signTypedData, SignTypedDataVersion } from "@metamask/eth-sig-util"
 
-console.log()
 /* CLIENTS */
 // ETH
 const ethJsonRpcUrl = `https://goerli.infura.io/v3/${process.env.infurio_id}`
@@ -102,7 +101,6 @@ const params = {
     denom: 'aevmos',
 }
     const msg = createMessageSend(chain, sender, fee, memo, params)
-    console.log(SignTypedDataVersion.V4)
     let signature = signTypedData({privateKey: sender.privKey, data: msg.eipToSign, version: SignTypedDataVersion.V4})
     let extension = signatureToWeb3Extension(chain, sender, signature)
 
