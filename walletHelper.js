@@ -1,5 +1,6 @@
 import { GasPrice, calculateFee } from "@cosmjs/stargate";
 import { makeCosmoshubPath } from "@cosmjs/proto-signing";
+import Crypto from "@cosmjs/crypto"
 import path from "path";
 
 const cliffnetGasPrice = GasPrice.fromString("0.01upebble");
@@ -25,9 +26,16 @@ export const evmosTestnetOptions = {
   jsonRpcUrl: "https://eth.bd.evmos.dev:8545",
   rpcUrl: "https://tendermint.bd.evmos.dev:26657",
   bech32prefix: "evmos",
-  denom: "tevmos",
+  denom: "atevmos",
   chainId: 9000,
-  cosmosChainId: "evmos_9000-4"
+  networkId: "evmos_9000-4",
+  hdPath: [
+    Crypto.Slip10RawIndex.hardened(44),
+    Crypto.Slip10RawIndex.hardened(118),
+    Crypto.Slip10RawIndex.hardened(0),
+    Crypto.Slip10RawIndex.normal(0),
+    Crypto.Slip10RawIndex.normal(0),
+  ],
 }
 
 export const evmosTestnetLocalOptions = {
@@ -37,5 +45,15 @@ export const evmosTestnetLocalOptions = {
   bech32prefix: "evmos",
   denom: "aevmos",
   chainId: 9000,
-  cosmosChainId: "evmos_9000-1"
+  networkId: "evmos_9000-1"
 }
+
+export const osmoTestnetOptions = {
+  httpUrl: "https://testnet-rest.osmosis.zone",
+  rpcUrl: "https://testnet-rpc.osmosis.zone",
+  bech32prefix: "osmo",
+  denom: "uosmo",
+  networkId: "osmosis-test-4"
+}
+
+// evmos13glqz7s2pwgs9qudzuz7nujqkv0626jclekwtc

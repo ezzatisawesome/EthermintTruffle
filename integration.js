@@ -1,13 +1,3 @@
-/**
- * // Setup metamask wallet with some fake tokens
- * // Attach to web3.js
- * TODO Bring assets from eth to evmos (IBC ??????)
- * TODO Bring assets from evmos to wasm (IBC transfer prob)
- * // Setup eth signer (alchemy web3? --> metamask signer)
- * //  setup cosmos signer with cosmjs
- * TODO Setup local evm node (geth?)
- */
-
 import { cliffnetOptions } from "./walletHelper.js"
 
 import Web3 from "web3"
@@ -117,5 +107,3 @@ const params = {
     let response = await broadcastPost.json();
     console.log(response)
 }
-// evmosTransaction()
-
