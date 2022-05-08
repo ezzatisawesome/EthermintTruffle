@@ -121,7 +121,7 @@ const evmosIbcTransfer = async (senderAddress, senderPrivKey, recipientAddress, 
     const senderAddressRawData = await fetch(`${evmosHttpUrl}${generateEndpointAccount(senderAddress)}`, fetchOptions)
     const senderAddressData = await senderAddressRawData.json()
 
-    const ibcChannelData = await evmosQueryClient.ibc.channel.channel("transfer", "channel-7")
+    const ibcChannelData = await evmosQueryClient.ibc.channel.channel("transfer", "channel-8")
 
     const chain = {
         chainId: evmosTestnetOptions.chainId,
@@ -146,7 +146,7 @@ const evmosIbcTransfer = async (senderAddress, senderPrivKey, recipientAddress, 
         denom: evmosTestnetOptions.denom,
         sourceChannel: "channel-8",
         sourcePort: "transfer",
-        revisionHeight: ibcChannelData.proofHeight.revisionHeight.add(Long.fromInt(150)).toNumber(),
+        revisionHeight: await osmoClient.getHeight() + 50,
         revisionNumber: ibcChannelData.proofHeight.revisionNumber.toNumber(),
         timeoutTimestamp: Long.fromNumber(Date.now() / 1000 + 60).multiply(1e9).toString()
     }
@@ -167,10 +167,17 @@ const evmosIbcTransfer = async (senderAddress, senderPrivKey, recipientAddress, 
     console.log(broadcastPostResponse)
 }
 
-console.log(evmosAddress)
+console.log("Eth Evmos Addr: " + ethEvmosAddress)
+console.log(await evmosQueryClient.bank.allBalances(ethEvmosAddress))
+
+console.log("Evmos Addr: " + evmosAddress)
 console.log(await evmosQueryClient.bank.allBalances(evmosAddress))
 
-console.log(osmoAddress)
+console.log("Osmo Addr: " + osmoAddress)
 console.log(await osmoQueryClient.bank.allBalances(osmoAddress))
 
-// evmosTransfer(evmosAddress, evmosEthPrivKey, ethEvmosAddress, 0.01)
+// console.log(await evmosQueryClient.ibc.channel.allChannels())
+// console.log(await evmosQueryClient.ibc.channel.channel('transfer', 'channel-8'))
+// console.log(await osmoQueryClient.ibc.channel.channel('transfr', 'channel-204'))
+
+// evmosIbcTransfer(evmosAddress, evmosEthPrivKey, osmoAddress, 0.001)

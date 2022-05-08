@@ -1,109 +1,223 @@
-import { cliffnetOptions } from "./walletHelper.js"
+import { cliffnetOptions, evmosTestnetOptions, osmoTestnetOptions } from "./walletHelper.js"
 
 import Web3 from "web3"
 import fetch from "node-fetch"
+import Long from "long"
+import util from "util"
 import DotenvConfigOptions  from "dotenv"
-DotenvConfigOptions.config({ path: './app.env'})
-
 import { ethToEvmos, evmosToEth } from "@tharsis/address-converter"
 import { generateEndpointBroadcast, generatePostBodyBroadcast, generateEndpointAccount } from '@tharsis/provider'
-import { createTxRawEIP712, signatureToWeb3Extension, createMessageSend } from '@tharsis/transactions'
-
+import { createTxRawEIP712, signatureToWeb3Extension, createMessageSend, createTxIBCMsgTransfer } from '@tharsis/transactions'
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate"
-import { QueryClient, setupBankExtension,  } from "@cosmjs/stargate"
+import { QueryClient, setupBankExtension, setupIbcExtension,  } from "@cosmjs/stargate"
 import { Tendermint34Client } from "@cosmjs/tendermint-rpc"
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing"
-
 import { signTypedData, SignTypedDataVersion } from "@metamask/eth-sig-util"
 
-/* CLIENTS */
-// ETH
-const ethJsonRpcUrl = `https://goerli.infura.io/v3/${process.env.infurio_id}`
-const ethWeb3 = new Web3(ethJsonRpcUrl)
+DotenvConfigOptions.config({ path: './app.env'})
+
+
+/*-----NETWORKS------*/
+// GOERLI
+const goerliJsonRpcUrl = `https://goerli.infura.io/v3/${process.env.infurio_id}`
 // EVMOS
-const evmosJsonRpcUrl = "http://0.0.0.0:8545"
-const evmosHttpUrl = "http://0.0.0.0:1317"
-const evmosRpcUrl = "tcp://0.0.0.0:26657"
-const evmosWeb3 = new Web3(evmosJsonRpcUrl)
-const evmosTmClient = await Tendermint34Client.connect(evmosRpcUrl)
-const evmosQueryClient = QueryClient.withExtensions(evmosTmClient, setupBankExtension)
+const evmosHttpUrl = evmosTestnetOptions.httpUrl
+const evmosJsonRpcUrl = evmosTestnetOptions.jsonRpcUrl
+const evmosRpcUrl = evmosTestnetOptions.rpcUrl
 // WASM
-const wasmHttpUrl = cliffnetOptions.lcdUrl // // haven't spun up yet
+const wasmHttpUrl = cliffnetOptions.lcdUrl
 const wasmRpcUrl = cliffnetOptions.httpUrl
-const wasmTmClient = await Tendermint34Client.connect(wasmRpcUrl)
-const wasmQueryClient = QueryClient.withExtensions(wasmTmClient, setupBankExtension)
+// OSMOSIS
+const osmoHttpUrl = osmoTestnetOptions.httpUrl
+const osmoRpcUrl = osmoTestnetOptions.rpcUrl
 
-
-/* TEST WALLETS + ACCOUNTS */
-const testMnemonic = "hand flavor weasel connect valley debris like useful exile machine faculty join eager catch hospital banner bus enjoy course print kitten poverty inner section" // ! will need to be stored in some db
-// ETH
-const ethTestAddress = "0x8c1Fc905C8623a8f136f8C0a5b940f9FD98F472c"
-const ethTestPrivKey = "725AD2FD3F644B31EA3C4F1B307DB8F92101269DBE9006FA38F0BA4C7BE8B5F4"
+/*-----CLIENTS------*/
+const tm_clients = await Promise.all([
+    Tendermint34Client.connect(evmosRpcUrl),
+    Tendermint34Client.connect(wasmRpcUrl),
+    Tendermint34Client.connect(osmoRpcUrl)
+])
+// GOERLI
+const goerliWeb3 = new Web3(goerliJsonRpcUrl)
 // EVMOS
-const evmosTestAddress = ethToEvmos(ethTestAddress)
+const evmosWeb3 = new Web3(evmosJsonRpcUrl)
+const evmosTmClient = tm_clients[0]
+const evmosQueryClient = QueryClient.withExtensions(evmosTmClient, setupBankExtension, setupIbcExtension)
 // WASM
-const wasmTestWallet = await DirectSecp256k1HdWallet.fromMnemonic(testMnemonic, { hdPaths: [cliffnetOptions.hdPath], prefix: cliffnetOptions.bech32prefix })
-const [wasmTestAccount] = await wasmTestWallet.getAccounts()
-const wasmTestAddress = wasmTestAccount.address
-const wasmClient = await SigningCosmWasmClient.connectWithSigner(wasmRpcUrl, wasmTestWallet);
+const wasmTmClient = tm_clients[1]
+const wasmQueryClient = QueryClient.withExtensions(wasmTmClient, setupBankExtension, setupIbcExtension)
+// OSMOSIS
+const osmoTmClient = tm_clients[2]
+const osmoQueryClient = QueryClient.withExtensions(osmoTmClient, setupBankExtension, setupIbcExtension)
 
+/*-----ACCOUNTS------*/
+const mainMnemonic = process.env.mainBipMnemonic
+// MAIN - eth
+const mainEthAddress = process.env.mainEthAddress
+const mainEthPrivKey = process.env.mainEthPrivKey
+// async getting wallets
+const main_wallets = await Promise.all([
+    DirectSecp256k1HdWallet.fromMnemonic(mainMnemonic, { hdPaths: [cliffnetOptions.hdPath], prefix: cliffnetOptions.bech32prefix }),
+    DirectSecp256k1HdWallet.fromMnemonic(mainMnemonic, { prefix: osmoTestnetOptions.bech32prefix }),
+])
+// async getting accounts
+const main_accounts = await Promise.all([
+    main_wallets[0].getAccounts(),
+    main_wallets[1].getAccounts()
+])
+// async getting clients
+const main_signing_clients = await Promise.all([
+    SigningCosmWasmClient.connectWithSigner(wasmRpcUrl, main_wallets[0]),
+    SigningCosmWasmClient.connectWithSigner(osmoRpcUrl, main_wallets[1]),
+])
+// MAIN - evmos
+const mainEvmosAddress = ethToEvmos(mainEthAddress)
+// MAIN - wasm
+const mainWasmWallet = main_wallets[0]
+const [mainWasmAccount] = main_accounts[0]
+const mainWasmAddress = mainWasmAccount.address
+const mainWasmSigningClient = main_signing_clients[0]
+// MAIN - osmosis
+const mainOsmoWallet = main_wallets[1]
+const [mainOsmoAccount] = main_accounts[1]
+const mainOsmoAddress = mainOsmoAccount.address
+const mainOsmoSigningClient = main_signing_clients[1]
 
-/* MAIN WALLETS + ACCOUNTS */
-// ETH
-const ethMainAddress = "0xDCFFe3264d4219b1C0DC39EDe7fc2af93B5E01F8"
-// EVMOS
-const evmosMainAddress = ethToEvmos(ethMainAddress)
-
-
-console.log(`ethTestAddress: ${ethTestAddress}`)
-console.log(`evmosTestAddress: ${evmosTestAddress}`)
-console.log(`wasmTestAddress: ${wasmTestAddress}`)
-console.log("evmosTestBank: " + JSON.stringify(await evmosQueryClient.bank.allBalances(evmosTestAddress)))
-console.log("evmosMainBank: " + JSON.stringify(await evmosQueryClient.bank.allBalances(evmosMainAddress)))
-console.log("wasmMainBank: " + JSON.stringify(await wasmQueryClient.bank.allBalances(wasmTestAddress)))
-console.log("ethTestBank: " + await ethWeb3.eth.getBalance(ethTestAddress))
-console.log("ethMainBank: " + await ethWeb3.eth.getBalance(ethMainAddress))
-console.log(`Transaction Count - Test Account: ${await evmosWeb3.eth.getTransactionCount(ethTestAddress)}`)
-console.log(`Transaction Count - Main Account: ${await evmosWeb3.eth.getTransactionCount(ethMainAddress)}`)
-
-
-const evmosTransaction = async () => {
-const chain = {
-    chainId: 9000,
-    cosmosChainId: 'evmos_9000-1',
+const transferAmount = (amount) => {
+    return (amount * Number(1000000000000000000n)).toString()
 }
-const sender = {
-    accountAddress: evmosTestAddress,
-    sequence: 1,
-    accountNumber: 0,
-    pubkey: 'A1Do/MPAsMi/Sk6vvncVRAxGLAIpLCUpD2hgYIy7fiU6', // // get public key
-    privKey: Buffer.from(ethTestPrivKey, 'hex') // // get priv key
-}
-const fee = {
-    amount: '20',
-    denom: 'aevmos',
-    gas: '200000',
-}
-const memo = ''
-const params = {
-    destinationAddress: evmosMainAddress,
-    amount: '1500000000000000000000000',
-    denom: 'aevmos',
-}
+
+const evmosTransfer = async (senderAddress, senderPrivKey, recipientAddress, amount) => {
+    const fetchOptions = {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json'}
+    }
+
+    const senderAddressRawData = await fetch(`${evmosHttpUrl}${generateEndpointAccount(senderAddress)}`, fetchOptions)
+    const senderAddressData = await senderAddressRawData.json()
+
+    const chain = {
+        chainId: evmosTestnetOptions.chainId,
+        cosmosChainId: evmosTestnetOptions.networkId
+    }
+    const sender = {
+        accountAddress: senderAddress,
+        sequence: senderAddressData.account.base_account.sequence,
+        accountNumber: senderAddressData.account.base_account.account_number,
+        pubkey: senderAddressData.account.base_account.pub_key.key,
+        privKey: Buffer.from(senderPrivKey, 'hex')
+    }
+    const fee = {
+        amount: '20',
+        denom: evmosTestnetOptions.denom,
+        gas: '200000',
+    }
+    const memo = ''
+    const params = {
+        destinationAddress: recipientAddress,
+        amount: transferAmount(amount),
+        denom: evmosTestnetOptions.denom,
+    }
+
     const msg = createMessageSend(chain, sender, fee, memo, params)
-    let signature = signTypedData({privateKey: sender.privKey, data: msg.eipToSign, version: SignTypedDataVersion.V4})
-    let extension = signatureToWeb3Extension(chain, sender, signature)
-
-    let rawTx = createTxRawEIP712(msg.legacyAmino.body, msg.legacyAmino.authInfo, extension)
+    const signature = signTypedData({ privateKey: sender.privKey, data: msg.eipToSign, version: SignTypedDataVersion.V4 })
+    const extension = signatureToWeb3Extension(chain, sender, signature)
+    const rawTx = createTxRawEIP712(msg.legacyAmino.body, msg.legacyAmino.authInfo, extension)
+    
     const postOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: generatePostBodyBroadcast(rawTx),
     }
-    let broadcastPost = await fetch(
-        `${evmosHttpUrl}${generateEndpointBroadcast()}`,
-        postOptions
-    )
-    let response = await broadcastPost.json();
-    console.log(response)
+
+    const broadcastPostResponseRaw = await fetch(`${evmosHttpUrl}${generateEndpointBroadcast()}`, postOptions)
+    const broadcastPostResponse = broadcastPostResponseRaw.json()
+    console.log(broadcastPostResponse)
 }
+
+
+const evmosOsmoIbcTransfer = async (senderAddress, senderPrivKey, recipientAddress, amount) => {
+    const fetchOptions = {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json'}
+    }
+
+    const a = await Promise.all([
+        (await fetch(`${evmosHttpUrl}${generateEndpointAccount(senderAddress)}`, fetchOptions)).json(),
+        evmosQueryClient.ibc.channel.channel("transfer", "channel-8"),
+        mainOsmoSigningClient.getHeight(),
+    ])
+
+    const senderAddressData = a[0]
+    const ibcChannelData = a[1]
+
+    const chain = {
+        chainId: evmosTestnetOptions.chainId,
+        cosmosChainId: evmosTestnetOptions.networkId
+    }
+    const sender = {
+        accountAddress: senderAddress,
+        sequence: senderAddressData.account.base_account.sequence,
+        accountNumber: senderAddressData.account.base_account.account_number,
+        pubkey: senderAddressData.account.base_account.pub_key.key,
+        privKey: Buffer.from(senderPrivKey, 'hex')
+    }
+    const fee = {
+        amount: '20',
+        denom: evmosTestnetOptions.denom,
+        gas: '200000',
+    }
+    const memo = ''
+    const params = {
+        receiver: recipientAddress,
+        amount: transferAmount(amount),
+        denom: evmosTestnetOptions.denom,
+        sourceChannel: "channel-8",
+        sourcePort: "transfer",
+        revisionHeight: a[2] + 50,
+        revisionNumber: ibcChannelData.proofHeight.revisionNumber.toNumber(),
+        timeoutTimestamp: Long.fromNumber(Date.now() / 1000 + 60).multiply(1e9).toString()
+    }
+
+    const msg = createTxIBCMsgTransfer(chain, sender, fee, memo, params)
+    const signature = signTypedData({ privateKey: sender.privKey, data: msg.eipToSign, version: SignTypedDataVersion.V4 })
+    const extension = signatureToWeb3Extension(chain, sender, signature)
+    const rawTx = createTxRawEIP712(msg.legacyAmino.body, msg.legacyAmino.authInfo, extension)
+    
+    const postOptions = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: generatePostBodyBroadcast(rawTx),
+    }
+
+    const broadcastPostResponseRaw = await fetch(`${evmosHttpUrl}${generateEndpointBroadcast()}`, postOptions)
+    const broadcastPostResponse = await broadcastPostResponseRaw.json()
+    console.log(broadcastPostResponse)
+}
+
+const prettyPrint = obj => {
+    return util.inspect(obj, null, 2, true)
+}
+
+const main_balances = await Promise.all([
+    evmosWeb3.eth.getBalance(mainEthAddress),
+    evmosQueryClient.bank.allBalances(mainEvmosAddress),
+    osmoQueryClient.bank.allBalances(mainOsmoAddress)
+])
+
+console.log("Main Eth Addr: " + mainEthAddress)
+console.log("Evmos Web3 Balance " + prettyPrint(main_balances[0]))
+console.log("Main Evmos Addr: " + mainEvmosAddress)
+console.log("Evmos Cosmos Balance " + prettyPrint(main_balances[1]))
+console.log("Main Osmo Addr: " + mainOsmoAddress)
+console.log("Osmo Balance " + prettyPrint(main_balances[2]))
+
+// const ibc_channels = await Promise.all([
+//     evmosQueryClient.ibc.channel.channel('transfer', 'channel-8'),
+//     osmoQueryClient.ibc.channel.channel('transfer', 'channel-242'),
+// ])
+
+// console.log(prettyPrint(ibc_channels[0]))
+// console.log(prettyPrint(ibc_channels[1]))
+
+// evmosOsmoIbcTransfer(mainEvmosAddress, mainEthPrivKey, mainOsmoAddress, 0.001)
