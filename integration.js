@@ -1,4 +1,4 @@
-import { cliffnetOptions, evmosTestnetOptions, osmoTestnetOptions } from "./walletHelper.js"
+import { cliffnetOptions, evmosTestnetOptions, osmoTestnetOptions } from "./testnetOptions.js"
 
 import Web3 from "web3"
 import fetch from "node-fetch"
@@ -19,7 +19,7 @@ DotenvConfigOptions.config({ path: './app.env'})
 
 /*-----NETWORKS------*/
 // GOERLI
-const goerliJsonRpcUrl = `https://goerli.infura.io/v3/${process.env.infurio_id}`
+const goerliJsonRpcUrl = "https://goerli.prylabs.net"
 // EVMOS
 const evmosHttpUrl = evmosTestnetOptions.httpUrl
 const evmosJsonRpcUrl = evmosTestnetOptions.jsonRpcUrl
