@@ -220,4 +220,4 @@ console.log("Osmo Balance " + prettyPrint(main_balances[2]))
 // console.log(prettyPrint(ibc_channels[0]))
 // console.log(prettyPrint(ibc_channels[1]))
 
-// evmosOsmoIbcTransfer(mainEvmosAddress, mainEthPrivKey, mainOsmoAddress, 0.001)
+evmosOsmoIbcTransfer(mainEvmosAddress, mainEthPrivKey, mainOsmoAddress, 0.001)
